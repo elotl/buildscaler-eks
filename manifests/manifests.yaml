@@ -1,0 +1,103 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: $BUILDSCALER_SERVICE_ACCOUNT_NAME
+  namespace: $NAMESPACE
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: $BUILDSCALER_SERVICE_ACCOUNT_NAME
+  namespace: $NAMESPACE
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - create
+  - delete
+  - list
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: $BUILDSCALER_SERVICE_ACCOUNT_NAME
+  namespace: $NAMESPACE
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: $BUILDSCALER_SERVICE_ACCOUNT_NAME
+subjects:
+- kind: ServiceAccount
+  name: $BUILDSCALER_SERVICE_ACCOUNT_NAME
+  namespace: $NAMESPACE
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $NAME
+  namespace: $NAMESPACE
+  labels:
+    app.kubernetes.io/name: $NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: $NAME
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: $NAME
+        app.kubernetes.io/name: $NAME
+    spec:
+      serviceAccountName: $BUILDSCALER_SERVICE_ACCOUNT_NAME
+      restartPolicy: Always
+      containers:
+      - name: aws-meteringagent
+        image: ${IMAGE_REGISTRY}/elotl/kip-aws-meteringagent:${METERING_AGENT_TAG}
+        command:
+          - /kip-aws-meteringagent
+          - --kip-endpoint=''
+      - name: buildscaler
+        image: ${IMAGE_REGISTRY}/elotl/buildscaler:${BUILDSCALER_TAG}
+        command:
+          - python
+          - buildscaler.py
+          - --buildkite-org=$buildkiteOrganizationSlug
+          - --namespace=$namespace
+          - --sync-interval=20
+        envFrom:
+        - secretRef:
+            name: $BUILDKITE_ACCESS_TOKEN_SECRET_NAME
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: $BUILDKITE_ACCESS_TOKEN_SECRET_NAME
+  namespace: $NAMESPACE
+  labels:
+    app.kubernetes.io/name: $NAME
+type: Opaque
+data:
+  BUILDKITE_ACCESS_TOKEN: $BUILDKITE_ACCESS_TOKEN_ENCODED
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: $BUILDKITE_AGENT_TOKEN_SECRET_NAME
+  namespace: $NAMESPACE
+  labels:
+    app.kubernetes.io/name: $NAME
+type: Opaque
+data:
+  BUILDKITE_AGENT_TOKEN: $BUILDKITE_AGENT_TOKEN_ENCODED
