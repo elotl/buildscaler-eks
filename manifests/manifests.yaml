@@ -73,8 +73,8 @@ spec:
         command:
           - python
           - buildscaler.py
-          - --buildkite-org=$buildkiteOrganizationSlug
-          - --namespace=$namespace
+          - --buildkite-org=$BUILDKITE_ORG_SLUG
+          - --namespace=$NAMESPACE
           - --sync-interval=20
         envFrom:
         - secretRef:

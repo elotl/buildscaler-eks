@@ -32,26 +32,19 @@ Set environment variables (modify as necessary):
     export NAMESPACE=default
     export REGISTRY=gcr.io/elotl-public/buildscaler
     export TAG=1.0.0
-    export BUILDKITE_ORG_SLUG=my-organization-slug # REQUIRED: change this to your org-slug
-    export BUILDKITE_ACCESS_TOKEN_ENCODED= # REQUIRED: fill in with a base64 encoded buildkite access token
+    export BUILDKITE_ORG_SLUG=my-organization-slug # REQUIRED: change this to your company's Buildkite org-slug
+    export BUILDKITE_ACCESS_TOKEN= # REQUIRED: fill in with your buildkite access token
 
-Create the namespace in your kubernetes cluster
+To deploy Buildscaler, use the script:
 
-    kubectl create namespace "$NAMESPACE"
-
-Use make to install the application
-
-    make app/install
+    ./manifests/deploy.sh
 
 ## Uninstall
 
-To remove buildscaler, simply:
+To remove Buildscaler, delete any Buildscaler job templates you have created as well as buildscaler pods, then delete the Buildscaler deployment
 
-    $ make app/uninstall
-
-# Backups
-
-Buildscaler is stateless.  It is assumed that the buildscaler job templates are stored in source control and can be easily recreated as necessary.
+    $ kubectl -n$NAMESPACE delete jobs,pods -l app.elotl.co=buildscaler
+    $ kubectl -n$NAMESPACE delete deploy buildscaler
 
 # Running Buildscaler
 
