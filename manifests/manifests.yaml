@@ -67,7 +67,12 @@ spec:
         image: ${IMAGE_REGISTRY}/elotl/kip-aws-meteringagent:${METERING_AGENT_TAG}
         command:
           - /kip-aws-meteringagent
-          - --kip-endpoint=''
+          - --kip-endpoint=
+        env:
+        - name: PRODUCT_CODE
+          value: 'esriwymj5ej4dzfgprkvieqq2'
+        - name: PUBLIC_KEY_VERSION
+          value: "1"
       - name: buildscaler
         image: ${IMAGE_REGISTRY}/elotl/buildscaler:${BUILDSCALER_TAG}
         command:
