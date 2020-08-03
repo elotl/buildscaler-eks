@@ -41,7 +41,7 @@ To deploy Buildscaler, use the script:
 
 To remove Buildscaler, delete the Buildscaler deployment then delete any Buildscaler job templates that have been created.
 
-    $ kubectl -n$NAMESPACE delete deploy buildscaler
+    $ kubectl -n$NAMESPACE delete Deployment,Secret,ServiceAccount,Role,RoleBinding -l app.kubernetes.io/name=$NAME
     $ kubectl -n$NAMESPACE delete jobs,pods -l app.elotl.co=buildscaler
 
 # Running Buildscaler

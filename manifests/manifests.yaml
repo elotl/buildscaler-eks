@@ -4,12 +4,16 @@ kind: ServiceAccount
 metadata:
   name: $BUILDSCALER_SERVICE_ACCOUNT_NAME
   namespace: $NAMESPACE
+  labels:
+    app.kubernetes.io/name: $NAME
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: $BUILDSCALER_SERVICE_ACCOUNT_NAME
   namespace: $NAMESPACE
+  labels:
+    app.kubernetes.io/name: $NAME
 rules:
 - apiGroups:
   - ""
@@ -31,6 +35,8 @@ kind: RoleBinding
 metadata:
   name: $BUILDSCALER_SERVICE_ACCOUNT_NAME
   namespace: $NAMESPACE
+  labels:
+    app.kubernetes.io/name: $NAME
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
