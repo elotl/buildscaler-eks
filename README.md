@@ -31,7 +31,7 @@ Set environment variables (be sure to modify BUILDKITE_ORG_SLUG, BUILDKITE_ACCES
     export NAMESPACE=default # change this as necessary. Buildscaler will run pods in this namespace
     export BUILDKITE_ORG_SLUG=my-organization-slug # REQUIRED: change this to your company's Buildkite org-slug
     export BUILDKITE_ACCESS_TOKEN=0123456789abcdef0123456789abcdef0123456789abcdef01 # REQUIRED: fill in with your Buildkite access token
-    export BUILDKITE_AGENT_TOKEN=aaaabbbbccccddddeeeeffffaaaabbbbccccddddeeeeffffff# REQUIRED: fill in with your Buildkite agent token
+    export BUILDKITE_AGENT_TOKEN=aaaabbbbccccddddeeeeffffaaaabbbbccccddddeeeeffffff # REQUIRED: fill in with your Buildkite agent token
 
 To deploy Buildscaler, use the script:
 

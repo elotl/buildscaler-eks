@@ -73,7 +73,8 @@ spec:
         image: ${IMAGE_REGISTRY}/elotl/kip-aws-meteringagent:${METERING_AGENT_TAG}
         command:
           - /kip-aws-meteringagent
-          - --kip-endpoint=
+          - --stats-endpoint=
+          - --pods-endpoint=
         env:
         - name: PRODUCT_CODE
           value: 'esriwymj5ej4dzfgprkvieqq2'
