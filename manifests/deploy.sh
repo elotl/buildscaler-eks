@@ -9,9 +9,9 @@ export NAMESPACE=${NAMESPACE:-default}
 export BUILDSCALER_SERVICE_ACCOUNT_NAME=${BUILDSCALER_SERVICE_ACCOUNT_NAME:-$NAME}
 export BUILDKITE_ACCESS_TOKEN_SECRET_NAME=${BUILDKITE_ACCESS_TOKEN_SECRET_NAME:-buildkite-access-token}
 export BUILDKITE_AGENT_TOKEN_SECRET_NAME=${BUILDKITE_AGENT_TOKEN_SECRET_NAME:-buildkite-agent-token}
-export IMAGE_REGISTRY=${REGISTRY:-689494258501.dkr.ecr.us-east-1.amazonaws.com}
-export BUILDSCALER_TAG=${BUILDSCALER_TAG:-v1.0.0}
-export METERING_AGENT_TAG=${METERING_AGENT_TAG:-v1.0.0}
+export IMAGE_REGISTRY=${REGISTRY:-117940112483.dkr.ecr.us-east-1.amazonaws.com/f9f9218a-2006-45bd-8906-be59ed38acca/cg-3561911556}
+export BUILDSCALER_TAG=${BUILDSCALER_TAG:-1.0-latest}
+export METERING_AGENT_TAG=${METERING_AGENT_TAG:-1.0-latest}
 
 [[ -z "$BUILDKITE_ACCESS_TOKEN" ]] && {
     echo "BUILDKITE_ACCESS_TOKEN must be set to the value of a buildkite access token you have created with permissions to red builds, list agents and stop agents"
