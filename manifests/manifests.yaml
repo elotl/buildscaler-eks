@@ -75,6 +75,8 @@ spec:
           - /kip-aws-meteringagent
           - --kip-endpoint=
         env:
+        - name: AWS_SDK_LOAD_CONFIG
+          value: "1"
         - name: PRODUCT_CODE
           value: 'esriwymj5ej4dzfgprkvieqq2'
         - name: PUBLIC_KEY_VERSION
