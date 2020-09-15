@@ -28,6 +28,12 @@ export METERING_AGENT_TAG=${METERING_AGENT_TAG:-1.0-latest}
     exit 1
 }
 
+[[ -z "$BUILDSCALER_SERVICE_ACCOUNT_ROLE_ARN" ]] && {
+    echo "BUILDSCALER_SERVICE_ACCOUNT_ROLE_ARN must be set to the ARN of the buildscaler IAM role created as a manual step in the README."
+    exit 1
+}
+export BUILDSCALER_SERVICE_ACCOUNT_ROLE_ARN
+
 export BUILDKITE_ACCESS_TOKEN_ENCODED=$(echo -n $BUILDKITE_ACCESS_TOKEN | base64)
 export BUILDKITE_AGENT_TOKEN_ENCODED=$(echo -n $BUILDKITE_AGENT_TOKEN | base64)
 

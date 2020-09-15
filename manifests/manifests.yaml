@@ -6,6 +6,8 @@ metadata:
   namespace: $NAMESPACE
   labels:
     app.kubernetes.io/name: $NAME
+  annotations:
+    eks.amazonaws.com/role-arn: ${BUILDSCALER_SERVICE_ACCOUNT_ROLE_ARN}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

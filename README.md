@@ -20,8 +20,58 @@ Follow these instructions to install Buildscaler from the command line.
 
 ### Prerequisites
 
-* A EKS cluster
+* A EKS cluster, Kubernetes 1.16 or higher configured with [IAM Roles for Service Accounts}(https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html)
 * kubectl
+
+### Create an IAM role for the buildscaler service account
+
+1. Enable OIDC for service accounts in your cluster by following the instructions [here](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html).
+2. Create service account linked IAM role for Buildscaler:
+
+Create an IAM role for the Buildscaler pod and configure it with the following policy:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "",
+            "Effect": "Allow",
+            "Action": [
+                "aws-marketplace:RegisterUsage",
+                "aws-marketplace:MeterUsage"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+Create a trust relationship on the IAM role, with the following fields replaced
+
+* Replace `$AWS_ACCOUNT_ID` with your AWS account ID (e.g. 123456789012)
+* Replace `$OIDC_PROVIDER` with your cluster's OIDC provider's URL (e.g. oidc.eks.us-east-1.amazonaws.com/id/AAAABBBBCCCCDDDDEEEEFFFF00001111)
+* Replace `$NAMESPACE` with the namespace buildscaler will run in (defaults to the default namespace)
+* Replace `$BUILDSCALER_SERVICE_ACCOUNT_NAME` with the name of the buildscaler service account (defaults to "buildscaler")
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::$AWS_ACCOUNT_ID:oidc-provider/$OIDC_PROVIDER"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "$OIDC_PROVIDER:sub": "system:serviceaccount:$NAMESPACE:$BUILDSCALER_SERVICE_ACCOUNT_NAME"
+        }
+      }
+    }
+  ]
+}
+```
 
 ### Install from the command line
 
@@ -32,7 +82,7 @@ Set environment variables (be sure to modify BUILDKITE_ORG_SLUG, BUILDKITE_ACCES
     export BUILDKITE_ORG_SLUG=my-organization-slug # REQUIRED: change this to your company's Buildkite org-slug
     export BUILDKITE_ACCESS_TOKEN=0123456789abcdef0123456789abcdef0123456789abcdef01 # REQUIRED: fill in with your Buildkite access token
     export BUILDKITE_AGENT_TOKEN=aaaabbbbccccddddeeeeffffaaaabbbbccccddddeeeeffffff # REQUIRED: fill in with your Buildkite agent token
-
+    export BUILDSCALER_SERVICE_ACCOUNT_ROLE_ARN=arn:aws:iam::123456789012:role/buildscaler # REQUIRED: fill in with the ARN of the IAM role for buildscaler
 To deploy Buildscaler, use the script:
 
     ./manifests/deploy.sh
