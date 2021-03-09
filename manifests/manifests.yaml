@@ -67,6 +67,10 @@ spec:
       labels:
         app: $NAME
         app.kubernetes.io/name: $NAME
+      # Prometheus metrics are exposed on port 9000
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9000'
     spec:
       serviceAccountName: $BUILDSCALER_SERVICE_ACCOUNT_NAME
       restartPolicy: Always
@@ -91,6 +95,9 @@ spec:
           - --buildkite-org=$BUILDKITE_ORG_SLUG
           - --namespace=$NAMESPACE
           - --sync-interval=20
+        ports:
+          - containerPort: 9000
+            name: metrics
         envFrom:
         - secretRef:
             name: $BUILDKITE_ACCESS_TOKEN_SECRET_NAME

@@ -94,30 +94,40 @@ To remove Buildscaler, delete the Buildscaler deployment then delete any Buildsc
     $ kubectl -n$NAMESPACE delete Deployment,Secret,ServiceAccount,Role,RoleBinding -l app.kubernetes.io/name=$NAME
     $ kubectl -n$NAMESPACE delete jobs,pods -l app.elotl.co=buildscaler
 
-# Running Buildscaler
+## Running Buildscaler
 
-## Options
+### Options
+
 ```
-Options:
   --token TEXT                    Buildkite API access token. Can be specified
                                   as an environment variable
-                                  BUILDKITE_ACCESS_TOKEN  [required]
+                                  BUILDKITE_ACCESS_TOKEN [required]
 
-  --buildkite-org TEXT            The Buildkite organization slug the controller
-                                  will look for jobs in  [required]
+  --buildkite-org TEXT            The buildkite organization slug the
+                                  controller will look for jobs in [required]
 
   -n, --namespace TEXT            Namespace to look for jobs in, leave blank
                                   for all namespaces. Buildscaler must run with
-				  a service account that has access to the
-				  namespace
+                                  a service account that has access to the
+                                  namespace
 
   --sync-interval INTEGER         Number of seconds to wait between syncing
                                   jobs
+
+  --healthz-address TEXT          Address the healthz server will listen to
+                                  requests on (defaults to all)
+
+  --healthz-port INTEGER          Portthe healthz server will listen to
+                                  requests on
 
   --disconnect-after-idle-timeout INTEGER
                                   The number of idle seconds to wait before an
                                   agent is shut down. Used to scale down idle
                                   agents and pods
+
+  --agent-startup-timeout         INTEGER
+                                  Timeout in seconds for agents to register
+                                  themselves in Buildkite after starting their pod
 
   --kubeconfig TEXT               Path to the kubeconfig file, if unspecified,
                                   will use InClusterConfig. Can also be
@@ -125,20 +135,23 @@ Options:
                                   KUBECONFIG
 
   -v, --verbose                   More logging output
+  --max-agent-lifetime INTEGER    Default perion (in seconds) after which
+                                  agents will be killed. Can be overridden per
+                                  agent using job annotation
+
   --help                          Show this message and exit.
 ```
 
 ## Configuring a Buildscaler Build
-
 In Buildkite, create a build pipeline with one or more build steps.  Configure each build step to run on a single queue (e.g. `queue=my_buildkite_queue`). _Note: each build step can use a different queue but there must be a Buildscaler job configured to run builds for each queue._
 
 Create a Kubernetes Job resource with a pod template that is capable of running a Buildkite build step.  The job resource must have the following properties:
 
-- A pod template specifying a container image with everything needed to run the build step including an image, environment variables, secrets for pulling from a private repo, a secret containing the Buildkite agent token, etc..  Baking the Buildkite agent into an image is preferred to downloading the agent for each pod but both workflows are supported.
-- The job’s `spec.parallelism` must equal `0`. This prevents the Kubernetes JobController from attempting to run the job itself.
+- A pod template specifying a container image with everything needed to run the build step including an image, environment variables, secrets for pulling from a private repo, a secret containing the Buildkite agent token, etc..  Baking the Buildkite agent into an image is preferred to downloading the agent for each pod but both workflows are covered in [Installing the Agent](#installing-the-agent) below.
+- The Kubernetes Job’s `spec.parallelism` must equal `0`. This prevents the Kubernetes JobController from attempting to run the job itself.
 - A label on the job identifying the job as a job managed by Buildscaler
-- A label on the job specifying a Buildkite job queue.
-- A Kubernetes Secret containing the Buildkite agent token. This secret is created when deploying Buildscaler.  Note that the Buildscaler system creates 2 different Buildkite secrets, each with a different purpose.  The access token secret is used by Buildscaler to query the Buildkite API to determine if there are waiting builds and query running agents.  The Buildkite agent token is gives build pods the credentials needed to run a buildkite agent and connect to Buildkite.  The Buildkite agent token must be included in the job’s pod template in order to run the Buildkite agent inside pods:
+- A label on the job specifying a buildkite job queue.
+- (optional) You can also specify how many builds can run in parallel for a particular pipeline with the `buildscaler.elotl.co/max-active-builds` annotation. This is useful for controlling parallelism or limiting builds to be serial via setting it to 1.
 
 ```yaml
 apiVersion: batch/v1
@@ -147,66 +160,98 @@ metadata:
   labels:
     app.elotl.co: buildscaler
     buildscaler.elotl.co/queue: my_buildkite_queue
-spec:
-  parallelism: 0
+  annotations:
+    buildscaler.elotl.co/max-active-builds: '1'
+```
+
+- A Kubernetes Secret containing the Buildkite agent token. That secret must be referenced from within the job’s pod template in order to run the agent inside pods. This is different from the `BUILDKITE_ACCESS_TOKEN` that was created when deploying buildscaler:
+
+```yaml
+apiVersion: batch/v1
+kind: Job
   template:
     spec:
       containers:
-      - name: agent
-        # <rest of pod spec has been removed>
-        envFrom:
+        name: agent
+      - envFrom:
         - secretRef:
-            name: buildkite-agent-token
+            name: buildkite-secrets
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: buildkite-agent-token
+  name: buildkite-secrets
 type: Opaque
 data:
   BUILDKITE_AGENT_TOKEN: {{ buildkite_agent_token }}
 ```
 
-### Full example buildscaler job
-
-```yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: bash-job
-  labels:
-    # both these labels are required. The first identifies this as a
-    # buildscaler build, the second says what queue to listen for jobs on
-    app.elotl.co: buildscaler
-    buildscaler.elotl.co/queue: bash
-spec:
-  # parallelism must be set to 0, this keeps the standard job controller
-  # from running the job
-  parallelism: 0
-  template:
-    spec:
-      containers:
-      - name: agent
-        # the image could be any image with the Buildkite agent installed
-          or the agent can be installed via an initContainer
-        image: buildkite/agent:3
-        envFrom:
-        - secretRef:
-            name: buildkite-agent-token
-        env:
-        - name: BASH_JOB
-          value: my_bash_job
-```
-
-Jobs can be changed and updated while Buildscaler is running.  Typically a job will be updated in order to change the job’s pod template to include new environment variables, new image tags or anything else to make the build run correctly.  Since Kubernetes Job pod templates are immutable, the job must be deleted and recreated in order to be updated.  When a job is deleted and then recreated, previously created Buildscaler pods associated with the job will be gracefully terminated by telling the Buildkite agent on the pod to shut down when it becomes idle.
+Jobs can be changed and updated while buildscaler is running.  Typically a job will be updated in order to change the job’s pod template to include new environment variables, new image tags or anything else to make the build run correctly.  Since Kubernetes Job pod templates are immutable, the job must be deleted and recreated in order to be updated.  When a job is deleted and then recreated, previously created buildscaler pods associated with the job will be gracefully terminated by telling the Buildkite agent on the pod to shut down when it becomes idle.
 
 ## Details
 
-* Buildscaler jobs are linked to Buildscaler pods via the queue they listen to.  If 2 pods and agents are listening to the same queue, it is assumed that they were created by the same job. This puts some limitations on jobs.
-* Two Buildscaler jobs cannot share the same queue.
-* A Buildscaler job cannot listen to multiple queues.
-* The Kubernetes job resource UID is used to identify Buildscaler pods created with an out of date template.  Out of date pods are gracefully shut down.
-* Pods created by Buildscaler will have `restartPolicy: Never`. Buildscaler will manage creating or recreating pods whenever necessary.
-* If a Buildscaler pod has an associated agent but does not have an associated job (a Buildscaler job associated with the pod’s Buildkite queue) then the pod will be gracefully terminated.
-* Any Buildscaler pod configured with a queue that does not have both an associated Buildscaler job and a running Buildscaler agent associated with the pod will be deleted.
-* If a pod does not have an associated running agent and the pod was created over 10 minutes ago, the pod will be deleted.  This allows the agent time to start but adds a timeout to pods with failed agents.
+* Buildscaler jobs are linked to buildscaler pods via the queue they listen to.  If 2 pods and agents are listening to the same queue, it is assumed that they were created by the same job. This puts some limitations on jobs.
+* Two buildscaler jobs cannot share the same queue.
+* A buildscaler job cannot listen to multiple queues.
+* The Kubernetes job resource UID is used to identify buildscaler pods created with an out of date template.  Out of date pods are gracefully shut down.
+* If a buildscaler pod has an associated agent but does not have an associated job (a buildscaler job associated with the pod’s buildkite queue) then the pod will be gracefully terminated.
+* Any buildscaler pods configured with a queue that does not have both an associated buildscaler job and a running buildscaler agent associated with the pod will be deleted.
+* If a pod does not have an associated running agent and the pod was created more than 10 minutes ago, the pod will be deleted.  This allows the agent time to start out and times out pods with failed agents.
+
+## Installing the Buildkite Agent onto Build Pods
+The agent can be baked into an existing docker image (e.g. android-ndk) or downloaded by an `initContainer` and shared with the pod's main agent container by placing the downloaded agent into an emptyDir volume.
+
+```yaml
+spec:
+  containers:
+  - command:
+    - /data/buildkite/bin/buildkite-agent
+    - start
+    - --config=/data/buildkite/buildkite-agent.cfg
+    - --tags=queue=my-build-queue
+    envFrom:
+    - secretRef:
+        name: buildkite-secrets
+    image: ellerbrock/alpine-bash-curl-ssl
+    imagePullPolicy: IfNotPresent
+    name: buildkite
+    volumeMounts:
+    - mountPath: /data
+      name: data
+  initContainers:
+  - command:
+    - bash
+    - -c
+    - curl -sL https://raw.githubusercontent.com/buildkite/agent/master/install.sh
+      | bash
+    env:
+    - name: DESTINATION
+      value: /data/buildkite
+    envFrom:
+    - secretRef:
+        name: buildkite-secrets
+    image: ellerbrock/alpine-bash-curl-ssl
+    imagePullPolicy: Always
+    name: installer
+    volumeMounts:
+    - mountPath: /data
+      name: data
+  restartPolicy: Always
+  volumes:
+  - emptyDir: {}
+    name: data
+```
+
+# Metrics
+Buildscaler exposes metrics in Prometheus format on port `9000`. You can add Prometheus annotations to the buildscaler deployment, so Prometheus will know where to scrape metrics from. Check [manifests](manifests/buildscaler-deploy.yaml) for an example.
+
+Collected metrics:
+
+| Metric name | Type |Description |
+| ----------- | ---- | ----------- |
+| active_agents_total | Gauge | Total number of running agents |
+| active_pods_total | Gauge | Total number of running pods |
+| buildkite_jobs_running_total | Gauge | Total number of running Buildkite jobs |
+| needed_pods_total | Gauge | Total number of needed pods |
+| sync_loop_runs_total | Counter | Total number of sync loop runs |
+| sync_loop_errors_total | Counter | Total number of errors in sync loop | 
