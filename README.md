@@ -164,6 +164,20 @@ metadata:
     buildscaler.elotl.co/max-active-builds: '1'
 ```
 
+- (optional) You can also specify Persistent Volume Claim size, mount path, storage class and created PVC lifecycle will be managed by Buildscaler. E.g.:
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app.elotl.co: buildscaler
+    buildscaler.elotl.co/queue: my_buildkite_queue
+  annotations:
+    buildscaler.elotl.co/pvc-size: '10Gi'
+    buildscaler.elotl.co/pvc-mount-path: '/var/lib/buildkite-agent'
+    buildscaler.elotl.co/pvc-storage-class-name: 'standard'
+```
+
 - A Kubernetes Secret containing the Buildkite agent token. That secret must be referenced from within the job’s pod template in order to run the agent inside pods. This is different from the `BUILDKITE_ACCESS_TOKEN` that was created when deploying buildscaler:
 
 ```yaml
