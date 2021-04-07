@@ -1,0 +1,5 @@
+namespace: default
+resources:
+- buildscaler-deploy.yaml
+- buildscaler-rbac.yaml
+- buildscaler-secrets.yaml

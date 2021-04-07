@@ -1,0 +1,49 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: buildscaler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: buildscaler-controller
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: buildscaler-controller
+      # Prometheus metrics are exposed on port 9000
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9000'
+    spec:
+      serviceAccountName: buildscaler
+      containers:
+      - name: buildscaler
+        # image: gcr.io/elotl-dev/buildscaler:latest
+        image: 689494258501.dkr.ecr.us-east-1.amazonaws.com/elotl/buildscaler:v1.4.0
+        command:
+          - python
+          - -m
+          - buildscaler.buildscaler
+          - --buildkite-org=FILL_IN_ORG_ID
+          - --namespace=default
+          - --sync-interval=20
+          - -v
+        envFrom:
+        - secretRef:
+            name: buildkite-secrets
+        ports:
+        - containerPort: 9000
+          name: metrics
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+      restartPolicy: Always

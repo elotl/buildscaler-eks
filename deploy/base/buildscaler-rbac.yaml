@@ -1,0 +1,45 @@
+# note that this only gives buildscaler access to the default namespace
+# if you'd like to buildscaler to work in all namespaces, you'll need
+# to give it a more permissions
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: buildscaler
+imagePullSecrets:
+  - name: ecr-docker-secret
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: buildscaler
+  namespace: default
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - create
+  - delete
+  - list
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: buildscaler
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: buildscaler
+subjects:
+- kind: ServiceAccount
+  name: buildscaler
+  namespace: default

@@ -94,6 +94,13 @@ To remove Buildscaler, delete the Buildscaler deployment then delete any Buildsc
     $ kubectl -n$NAMESPACE delete Deployment,Secret,ServiceAccount,Role,RoleBinding -l app.kubernetes.io/name=$NAME
     $ kubectl -n$NAMESPACE delete jobs,pods -l app.elotl.co=buildscaler
 
+## Install in non-EKS cluster
+You have to have kustomize installed.
+Fill in your AWS credentials to [aws_secret.yaml](deploy/overlays/other-providers/aws_secret.yaml).
+Fill in your Buildkite Org in [buidscaler-deploy.yaml](deploy/base/buildscaler-deploy.yaml#L31)
+Fill in your Buildkite tokens in [buildscaler-secrets.yaml](deploy/base/buildscaler-secrets.yaml#L9)
+Run `kubectl apply -k deploy/overlays/other-providers`
+
 ## Running Buildscaler
 
 ### Options
