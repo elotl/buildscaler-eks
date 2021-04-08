@@ -1,4 +1,4 @@
-namespace: default
+namespace: buildscaler
 resources:
 - buildscaler-deploy.yaml
 - buildscaler-rbac.yaml
